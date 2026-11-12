@@ -1,0 +1,35 @@
+name: Build External Logic
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish (linux-x64)
+        run: |
+          PROJ=$(find . -name "BudgetExport.csproj" -not -path "*/obj/*" | head -n 1)
+          if [ -z "$PROJ" ]; then echo "BudgetExport.csproj not found"; ls -R; exit 1; fi
+          echo "Building $PROJ"
+          dotnet publish "$PROJ" -c Release -r linux-x64 --self-contained false -o "$GITHUB_WORKSPACE/publish"
+
+      - name: List package content
+        run: ls -la "$GITHUB_WORKSPACE/publish"
+
+      - name: Upload package for ODC
+        uses: actions/upload-artifact@v4
+        with:
+          name: BudgetExport-${{ github.run_number }}
+          path: publish/
+          if-no-files-found: error
